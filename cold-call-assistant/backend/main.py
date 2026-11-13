@@ -238,7 +238,7 @@ async def gemini(prompt: str) -> str:
         raise HTTPException(503, "AI is not configured. Add GEMINI_API_KEY to the backend environment.")
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=60) as client:
             response = await client.post(
                 url,
                 json={
