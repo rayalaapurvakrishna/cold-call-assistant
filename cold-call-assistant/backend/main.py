@@ -234,30 +234,66 @@ async def close_call(call_id: str, body: CloseCall):
     return {"saved": True, "call": call}
 
 
+
 async def gemini(prompt: str) -> str:
     if not GEMINI_API_KEY:
-        raise HTTPException(503, "AI is not configured. Add GEMINI_API_KEY to the backend environment.")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+        raise HTTPException(
+            503,
+            "AI is not configured. Add GEMINI_API_KEY to the backend environment."
+        )
+
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/"
+        f"models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    )
+
+    payload = {
+        "system_instruction": {
+            "parts": [{
+                "text": (
+                    "You are CallGuide, a careful cold-call note assistant. "
+                    "Never invent prospect facts, never pressure a prospect, "
+                    "and always respect a clear refusal or do-not-call request. "
+                    "Distinguish a document request from genuine buying intent. "
+                    "Preserve multilingual wording and names exactly. "
+                    "Keep output concise and practical."
+                )
+            }]
+        },
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": 500
+        },
+    }
+
     try:
         async with httpx.AsyncClient(timeout=60) as client:
-            response = await client.post(
-                url,
-                json={
-                    "system_instruction": {
-                        "parts": [{"text": "You are CallGuide, a careful cold-call note assistant. Never invent prospect facts, never pressure a prospect, and always respect a clear refusal or do-not-call request. Distinguish a document request from genuine buying intent. Preserve multilingual wording and names exactly; do not silently translate or normalize Hindi, Hinglish, Marathi, Kannada, or other language fragments. Keep output concise and practical."}]
-                    },
-                    "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 500},
-                },
-            )
-        if response.is_error:
-            raise HTTPException(502, f"Gemini API returned {response.status_code}. Check model access, API key, and quota.")
-        data = response.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            for attempt in range(3):
+                response = await client.post(url, json=payload)
+
+                if response.status_code in (429, 500, 502, 503, 504):
+                    if attempt < 2:
+                        await asyncio.sleep(2 ** attempt)
+                        continue
+
+                if response.is_error:
+                    raise HTTPException(
+                        502,
+                        f"Gemini API returned {response.status_code}. "
+                        "Check model access, API key, and quota."
+                    )
+
+                data = response.json()
+                return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+
     except (KeyError, IndexError, TypeError):
         raise HTTPException(502, "Gemini returned an unexpected response. Try again.")
     except httpx.TimeoutException:
         raise HTTPException(504, "Gemini took too long to respond. Try again.")
+
+    raise HTTPException(503, "Gemini is temporarily unavailable. Please try again.")
+
 
 
 @app.post("/ai/suggest-stage")
