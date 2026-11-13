@@ -277,12 +277,12 @@ async def gemini(prompt: str) -> str:
                         await asyncio.sleep(2 ** attempt)
                         continue
 
-               if response.is_error:
-    print("Gemini error:", response.status_code, response.text[:1000])
-    raise HTTPException(
-        502,
-        f"Gemini API returned {response.status_code}. Check Render logs."
-    )
+                            if response.is_error:
+                    print("Gemini error:", response.status_code, response.text[:1000])
+                    raise HTTPException(
+                        502,
+                        f"Gemini API returned {response.status_code}. Check Render logs."
+                    )
                 data = response.json()
                 return data["candidates"][0]["content"]["parts"][0]["text"].strip()
 
