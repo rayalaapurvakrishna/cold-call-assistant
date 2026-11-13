@@ -297,7 +297,8 @@ async def gemini(prompt: str) -> str:
             502,
             "Gemini returned an unexpected response. Try again."
         )
-    except httpx.TimeoutException:
+    except httpx.TimeoutException as exc:
+        print("Gemini timeout type:", type(exc).__name__)
         raise HTTPException(
             504,
             "Gemini took too long to respond. Try again."
