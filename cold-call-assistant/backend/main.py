@@ -235,6 +235,7 @@ async def close_call(call_id: str, body: CloseCall):
 
 
 
+
 async def gemini(prompt: str) -> str:
     if not GEMINI_API_KEY:
         raise HTTPException(
@@ -277,22 +278,35 @@ async def gemini(prompt: str) -> str:
                         await asyncio.sleep(2 ** attempt)
                         continue
 
-                            if response.is_error:
-                    print("Gemini error:", response.status_code, response.text[:1000])
+                if response.is_error:
+                    print(
+                        "Gemini error:",
+                        response.status_code,
+                        response.text[:1000]
+                    )
                     raise HTTPException(
                         502,
                         f"Gemini API returned {response.status_code}. Check Render logs."
                     )
+
                 data = response.json()
                 return data["candidates"][0]["content"]["parts"][0]["text"].strip()
 
     except (KeyError, IndexError, TypeError):
-        raise HTTPException(502, "Gemini returned an unexpected response. Try again.")
+        raise HTTPException(
+            502,
+            "Gemini returned an unexpected response. Try again."
+        )
     except httpx.TimeoutException:
-        raise HTTPException(504, "Gemini took too long to respond. Try again.")
+        raise HTTPException(
+            504,
+            "Gemini took too long to respond. Try again."
+        )
 
-    raise HTTPException(503, "Gemini is temporarily unavailable. Please try again.")
-
+    raise HTTPException(
+        503,
+        "Gemini is temporarily unavailable. Please try again."
+    )
 
 
 @app.post("/ai/suggest-stage")
