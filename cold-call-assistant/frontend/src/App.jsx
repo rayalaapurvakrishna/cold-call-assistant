@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Phone, History, ChevronRight, Check, Clock, Sparkles, Save, X,
   Loader2, MessageSquareText, BarChart3, ArrowUpRight, FileText,
-  ShieldCheck, RefreshCw, AlertCircle,
+  ShieldCheck, RefreshCw, AlertCircle, LayoutDashboard,
 } from 'lucide-react';
 import { stages } from './stages';
 import { research } from './research';
@@ -62,10 +62,9 @@ function App() {
 
   const current = stages[stage - 1];
   const draft = drafts[stage] || emptyDraft;
-
   const pct = Math.round((furthestStage / 8) * 100);
 
-  // Dashboard statistics calculated from actual saved calls.
+  // Dashboard statistics
   const totalCalls = history.length;
 
   const positiveCalls = history.filter((item) =>
@@ -346,9 +345,16 @@ function App() {
     setAi('');
   }
 
+  function navigateTo(nextPage) {
+    setPage(nextPage);
+
+    if (nextPage === 'history') {
+      loadHistory();
+    }
+  }
+
   return (
     <div className="app">
-
       {/* PREMIUM SIDEBAR */}
       <aside className="sidebar">
         <div className="brand">
@@ -366,18 +372,15 @@ function App() {
         <nav className="sidebar-nav">
           <button
             className={page === 'call' ? 'sidebar-link active' : 'sidebar-link'}
-            onClick={() => setPage('call')}
+            onClick={() => navigateTo('call')}
           >
-            <Phone size={17} />
-            <span>{call ? 'Live call' : 'Dashboard'}</span>
+            <LayoutDashboard size={17} />
+            <span>Dashboard</span>
           </button>
 
           <button
             className={page === 'history' ? 'sidebar-link active' : 'sidebar-link'}
-            onClick={() => {
-              setPage('history');
-              loadHistory();
-            }}
+            onClick={() => navigateTo('history')}
           >
             <History size={17} />
             <span>Call history</span>
@@ -385,7 +388,7 @@ function App() {
 
           <button
             className={page === 'research' ? 'sidebar-link active' : 'sidebar-link'}
-            onClick={() => setPage('research')}
+            onClick={() => navigateTo('research')}
           >
             <BarChart3 size={17} />
             <span>Research</span>
@@ -412,11 +415,12 @@ function App() {
 
           <div className="sidebar-footer">
             <ShieldCheck size={16} />
-            <span>AI assists. You decide.</span>
+            <span>AI assists. The caller decides.</span>
           </div>
         </div>
       </aside>
 
+      {/* MAIN CONTENT */}
       <main>
         {page === 'call' && !call && (
           <section className="welcome">
@@ -474,7 +478,7 @@ function App() {
                 <span>under two minutes</span>
               </div>
 
-              <button onClick={() => setPage('research')}>
+              <button onClick={() => navigateTo('research')}>
                 See research <ArrowUpRight size={14} />
               </button>
             </div>
@@ -799,7 +803,7 @@ function App() {
                 <h3>No saved calls yet</h3>
                 <p>Completed calls will appear here.</p>
 
-                <button className="primary" onClick={() => setPage('call')}>
+                <button className="primary" onClick={() => navigateTo('call')}>
                   Start your first call
                 </button>
               </div>
