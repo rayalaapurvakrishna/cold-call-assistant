@@ -63,8 +63,22 @@ function App() {
   const current = stages[stage - 1];
   const draft = drafts[stage] || emptyDraft;
 
-  // Progress reflects the highest stage actually reached.
   const pct = Math.round((furthestStage / 8) * 100);
+
+  // Dashboard statistics calculated from actual saved calls.
+  const totalCalls = history.length;
+
+  const positiveCalls = history.filter((item) =>
+    ['next_step_agreed', 'agreed_to_receive_report', 'interested'].includes(item.outcome)
+  ).length;
+
+  const followUpCalls = history.filter((item) =>
+    ['follow_up', 'call_again', 'agreed_to_receive_report'].includes(item.outcome)
+  ).length;
+
+  const conversionRate = totalCalls
+    ? Math.round((positiveCalls / totalCalls) * 100)
+    : 0;
 
   const notify = (message) => {
     setToast(message);
@@ -282,8 +296,6 @@ function App() {
     }
   }
 
-  // AI analysis for a saved call.
-  // The backend retrieves the complete saved conversation using call_id.
   async function analyzeSavedCall(kind) {
     if (!detail?.call?.id) return;
 
@@ -401,6 +413,33 @@ function App() {
               A calm, evidence-led guide for real conversations. Keep the
               structure in view and the prospect’s words at the centre.
             </p>
+
+            {/* Live dashboard statistics */}
+            <div className="dashboard-stats">
+              <div className="stat-card">
+                <span>TOTAL CALLS</span>
+                <strong>{totalCalls}</strong>
+                <small><Phone size={13} /> Saved conversations</small>
+              </div>
+
+              <div className="stat-card">
+                <span>POSITIVE OUTCOMES</span>
+                <strong>{positiveCalls}</strong>
+                <small><Check size={13} /> Interested prospects</small>
+              </div>
+
+              <div className="stat-card">
+                <span>FOLLOW-UPS</span>
+                <strong>{followUpCalls}</strong>
+                <small><Clock size={13} /> Actions to revisit</small>
+              </div>
+
+              <div className="stat-card">
+                <span>POSITIVE RATE</span>
+                <strong>{conversionRate}%</strong>
+                <small><BarChart3 size={13} /> Positive outcomes / calls</small>
+              </div>
+            </div>
 
             <div className="research-strip">
               <div>
