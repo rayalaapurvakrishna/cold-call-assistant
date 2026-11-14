@@ -172,7 +172,7 @@ async def load_call_stages(call_id: str):
     if using_supabase():
         calls = await db_request(
             "GET",
-            f"calls?id=eq.{call_id}&select=id,company_name,prospect_name&limit=1"
+            f"calls?id=eq.{call_id}&select=id,company_name,prospect_name,role,phone_note&limit=1"
         )
 
         if not calls:
@@ -762,55 +762,77 @@ def json_stages():
     )
 
 
+
 @app.post("/ai/suggest-stage")
 async def suggest_stage(body: AIRequest):
     conversation, company = await get_ai_context(body)
 
     prompt = f"""
-Analyze the complete sales conversation below.
+Analyze this sales conversation using evidence only.
 
-Identify the most advanced stage that is ACTUALLY supported by evidence.
-
-Do not assume that the caller has completed a stage just because it is selected
-in the interface.
-
-AVAILABLE STAGES:
-{json_stages()}
-
-CURRENT STAGE SELECTED BY CALLER:
-{body.stage_number} — {STAGES[body.stage_number]}
-
-COMPANY:
+PROSPECT COMPANY:
 {company or "Not provided"}
+
+SELECTED CURRENT WORKING STAGE:
+{body.stage_number} — {STAGES[body.stage_number]}
 
 COMPLETE CONVERSATION:
 {conversation}
 
+IMPORTANT INSTRUCTIONS:
+
+1. The CURRENT STAGE must always reflect the stage selected by the caller:
+   {body.stage_number} — {STAGES[body.stage_number]}
+
+2. Do not replace the current stage with a later stage just because
+   the conversation contains an early indication of a later-stage topic.
+
+3. Identify any additional signals separately.
+
+4. Do not assume BrightTech Solutions or any prospect company
+   is the caller's solution provider.
+
+5. Approval required must only be classified when another
+   decision-maker or approval process is explicitly mentioned.
+
+6. Distinguish a requested report from an agreed meeting.
+
+7. Distinguish a proposed demo from a scheduled demo.
+
+8. Do not classify a prospect as won without explicit purchase evidence.
+
+9. Use exact prospect quotes as evidence.
+
 CLASSIFICATION CHECKLIST:
 
-- Is this a budget qualification or an actual price objection?
-- Is the prospect comparing vendors?
-- Is a manager or director approval required?
-- Has the prospect explicitly stated a need?
-- Has the prospect agreed to a specific next step?
-- Is there a clear refusal or do-not-call request?
-- Is there evidence of an actual buying commitment?
+- Is a need explicitly stated?
+- Is there a genuine price objection?
+- Is the prospect evaluating another vendor or existing tool?
+- Is approval explicitly required?
+- Is there a buying signal?
+- Has a next step actually been agreed?
+- Has a meeting actually been scheduled?
+- Is there a refusal or do-not-call request?
 
-Respond using these exact headings:
+Use these exact headings:
 
-Likely stage:
+Current stage:
+Detected signals:
 Classification:
 Evidence:
 What is still unknown:
 Suggested next move:
 Confidence: LOW / MEDIUM / HIGH
 
-For Classification, use the most relevant label:
-Qualification, Need identified, Price objection, Vendor evaluation,
-Approval required, Other objection, Information requested,
-Next step agreed, Buying signal, Refusal, Do not call, or Uncertain.
+For Detected signals, identify relevant information
+without changing the current stage.
 
-Do not invent evidence. Quote the prospect's actual words when useful.
+For Classification, choose the most relevant:
+Qualification, Need identified, Price objection,
+Vendor evaluation, Approval required, Other objection,
+Information requested, Next step agreed, Buying signal,
+Refusal, Do not call, or Uncertain.
+
 Keep the response under 180 words.
 """
 
