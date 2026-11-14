@@ -55,13 +55,15 @@ function App() {
   const [showEnd, setShowEnd] = useState(false);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailAiLoading, setDetailAiLoading] = useState(false);
+  const [detailAnalysis, setDetailAnalysis] = useState('');
+  const [detailNotes, setDetailNotes] = useState('');
   const [serviceHealth, setServiceHealth] = useState(null);
 
   const current = stages[stage - 1];
   const draft = drafts[stage] || emptyDraft;
 
-  // Progress reflects the highest stage actually reached,
-  // not simply the stage currently selected.
+  // Progress reflects the highest stage actually reached.
   const pct = Math.round((furthestStage / 8) * 100);
 
   const notify = (message) => {
@@ -266,6 +268,9 @@ function App() {
 
   async function openDetail(item) {
     setDetailLoading(true);
+    setDetail(null);
+    setDetailAnalysis('');
+    setDetailNotes('');
 
     try {
       const data = await request(`/calls/${item.id}`);
@@ -277,8 +282,54 @@ function App() {
     }
   }
 
+  // AI analysis for a saved call.
+  // The backend retrieves the complete saved conversation using call_id.
+  async function analyzeSavedCall(kind) {
+    if (!detail?.call?.id) return;
+
+    setDetailAiLoading(true);
+
+    if (kind === 'suggest-stage') {
+      setDetailAnalysis('');
+    } else {
+      setDetailNotes('');
+    }
+
+    try {
+      const data = await request(`/ai/${kind}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          call_id: detail.call.id,
+          stage_number: Math.min(
+            8,
+            Math.max(1, detail.call.stage_reached || 8)
+          ),
+          company_name: detail.call.company_name || '',
+          prospect_words: '',
+          caller_note: '',
+          history: [],
+        }),
+      });
+
+      if (kind === 'suggest-stage') {
+        setDetailAnalysis(data.result || 'No analysis returned.');
+      } else {
+        setDetailNotes(data.result || 'No notes returned.');
+      }
+    } catch (error) {
+      const message = error.message || 'AI analysis failed.';
+
+      if (kind === 'suggest-stage') {
+        setDetailAnalysis(message);
+      } else {
+        setDetailNotes(message);
+      }
+    } finally {
+      setDetailAiLoading(false);
+    }
+  }
+
   function goToStage(number) {
-    // Selecting a stage must not falsely increase actual call progress.
     setStage(number);
     setAi('');
   }
@@ -921,6 +972,55 @@ function App() {
                 </div>
               ))}
             </div>
+
+            <div className="section-label">AI REVIEW OF THIS SAVED CALL</div>
+
+            <p>
+              Analyze the complete saved conversation or generate structured
+              CRM notes from its recorded stages.
+            </p>
+
+            <div className="airow">
+              <button
+                className="ai-button"
+                onClick={() => analyzeSavedCall('suggest-stage')}
+                disabled={detailAiLoading}
+              >
+                {detailAiLoading
+                  ? <Loader2 className="spin" />
+                  : <Sparkles size={15} />}
+                Analyze saved call
+              </button>
+
+              <button
+                className="ai-button"
+                onClick={() => analyzeSavedCall('structure-notes')}
+                disabled={detailAiLoading}
+              >
+                <FileText size={15} />
+                Generate CRM notes
+              </button>
+            </div>
+
+            {detailAnalysis && (
+              <div className="airesult">
+                <b><Sparkles size={14} /> AI call analysis</b>
+                <p>{detailAnalysis}</p>
+              </div>
+            )}
+
+            {detailNotes && (
+              <div className="airesult">
+                <b><FileText size={14} /> Structured CRM notes</b>
+                <p>{detailNotes}</p>
+              </div>
+            )}
+
+            {detailAiLoading && (
+              <div className="detail-loading">
+                <Loader2 className="spin" /> AI is reviewing the saved conversation…
+              </div>
+            )}
           </div>
         </div>
       )}
