@@ -15,7 +15,7 @@ load_dotenv()
 
 app = FastAPI(
     title="CallGuide API",
-    version="2.0.0",
+    version="2.1.0",
     description="Evidence-led cold-call intelligence assistant"
 )
 
@@ -38,7 +38,6 @@ SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
-# Volatile fallback for local development and demos.
 memory_calls = {}
 
 
@@ -77,9 +76,6 @@ class AIRequest(BaseModel):
     caller_note: str = ""
     company_name: str = ""
     history: List[str] = Field(default_factory=list)
-
-    # Optional so older frontend requests remain compatible.
-    # The upgraded frontend will send this to retrieve saved stages.
     call_id: Optional[str] = None
 
 
@@ -162,11 +158,6 @@ def validate_call_id(call_id: str):
 
 
 async def load_call_stages(call_id: str):
-    """
-    Retrieve the actual saved stage history.
-    This is the source of truth for AI conversation context.
-    """
-
     call_id = validate_call_id(call_id)
 
     if using_supabase():
@@ -200,11 +191,6 @@ async def load_call_stages(call_id: str):
 
 
 def build_conversation_context(stages, extra_history):
-    """
-    Build a readable transcript from all saved stages.
-    Preserve prospect wording and distinguish it from caller notes.
-    """
-
     sections = []
 
     for stage in stages:
@@ -246,17 +232,10 @@ def build_conversation_context(stages, extra_history):
 
     result = "\n\n".join(sections)
 
-    # Prevent excessively long prompts.
     return result[-18000:] if result else "No saved conversation."
 
 
-
 async def get_ai_context(body: AIRequest):
-    """
-    Combine saved stages, caller setup context and current unsaved input.
-    Older frontend requests without call_id still work.
-    """
-
     stages = []
     company = body.company_name
     caller_context = ""
@@ -303,7 +282,6 @@ async def get_ai_context(body: AIRequest):
     return context, company
 
 
-
 # --------------------------------------------------
 # API STATUS
 # --------------------------------------------------
@@ -312,7 +290,7 @@ async def get_ai_context(body: AIRequest):
 def root():
     return {
         "service": "CallGuide API",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "status": "ok"
     }
 
@@ -573,11 +551,11 @@ async def close_call(call_id: str, body: CloseCall):
 # GEMINI AI
 # --------------------------------------------------
 
-
 SYSTEM_INSTRUCTION = """
 You are CallGuide, an evidence-led sales-call intelligence assistant.
 
-Your priority is factual accuracy, not making the conversation appear more advanced than it is.
+Your priority is factual accuracy, not making the conversation appear
+more advanced than it is.
 
 CORE RULES:
 
@@ -689,7 +667,7 @@ async def gemini(prompt: str) -> str:
         ],
         "generationConfig": {
             "temperature": 0.2,
-            "maxOutputTokens": 800
+            "maxOutputTokens": 1200
         }
     }
 
@@ -716,7 +694,6 @@ async def gemini(prompt: str) -> str:
                     )
 
                 data = response.json()
-
                 candidates = data.get("candidates") or []
 
                 if not candidates:
@@ -774,13 +751,16 @@ def json_stages():
     )
 
 
+# --------------------------------------------------
+# AI STAGE COACH - UPGRADED
+# --------------------------------------------------
 
 @app.post("/ai/suggest-stage")
 async def suggest_stage(body: AIRequest):
     conversation, company = await get_ai_context(body)
 
     prompt = f"""
-Analyze this sales conversation using evidence only.
+Analyze this complete sales conversation using evidence only.
 
 PROSPECT COMPANY:
 {company or "Not provided"}
@@ -791,67 +771,134 @@ SELECTED CURRENT WORKING STAGE:
 COMPLETE CONVERSATION:
 {conversation}
 
-IMPORTANT INSTRUCTIONS:
+IMPORTANT:
+The selected current working stage is determined by the caller.
+Do not change it based on the prospect's buying signals.
 
-1. The CURRENT STAGE must always reflect the stage selected by the caller:
-   {body.stage_number} — {STAGES[body.stage_number]}
+Your analysis MUST independently assess THREE different dimensions:
 
-2. Do not replace the current stage with a later stage just because
-   the conversation contains an early indication of a later-stage topic.
+DIMENSION 1 — CONVERSATION PROGRESS
 
-3. Identify any additional signals separately.
+Report:
+- Selected working stage.
+- What the caller and prospect have actually covered.
+- Whether the selected stage has supporting evidence.
+- Any earlier or later stage signals worth noting.
 
-4. Do not assume BrightTech Solutions or any prospect company
-   is the caller's solution provider.
+Do not confuse reaching Stage 8 (Close) with making a sale.
 
-5. Approval required must only be classified when another
-   decision-maker or approval process is explicitly mentioned.
+DIMENSION 2 — SALES QUALIFICATION
 
-6. Distinguish a requested report from an agreed meeting.
+Assess these areas separately:
 
-7. Distinguish a proposed demo from a scheduled demo.
+1. Business need:
+   Is there an explicit business problem or goal?
+   Include the prospect's evidence.
 
-8. Do not classify a prospect as won without explicit purchase evidence.
+2. Existing solution:
+   What tool or process does the prospect currently use?
+   What limitation did they actually mention?
 
-9. Use exact prospect quotes as evidence.
+3. Budget:
+   Is a budget amount or spending range known?
+   Is there a budget concern?
+   Do not invent an amount.
 
-CLASSIFICATION CHECKLIST:
+4. Decision-making authority:
+   Is the prospect the decision-maker?
+   Is another person's approval explicitly required?
+   If unknown, say "Not established."
 
-- Is a need explicitly stated?
-- Is there a genuine price objection?
-- Is the prospect evaluating another vendor or existing tool?
-- Is approval explicitly required?
-- Is there a buying signal?
-- Has a next step actually been agreed?
-- Has a meeting actually been scheduled?
-- Is there a refusal or do-not-call request?
+5. Buying interest:
+   Is there general interest, active evaluation, or an explicit
+   purchase commitment?
+   Do not exaggerate conditional interest.
 
-Use these exact headings:
+Give an overall qualification assessment:
+- Qualified: meaningful need and sufficient supporting qualification evidence.
+- Partially qualified: meaningful need, but important commercial details remain unknown.
+- Not qualified: no supported need or clear disqualifying evidence.
+- Insufficient information: too little evidence to assess.
 
-Current stage:
-Detected signals:
-Classification:
-Evidence:
-What is still unknown:
-Suggested next move:
-Confidence: LOW / MEDIUM / HIGH
+Do not automatically call a prospect qualified merely because they
+identified a problem or requested information.
 
-For Detected signals, identify relevant information
-without changing the current stage.
+DIMENSION 3 — ACTUAL CALL OUTCOME
 
-For Classification, choose the most relevant:
-Qualification, Need identified, Price objection,
-Vendor evaluation, Approval required, Other objection,
-Information requested, Next step agreed, Buying signal,
-Refusal, Do not call, or Uncertain.
+Identify separately:
 
-Keep the response under 180 words.
+- Prospect's requested action.
+- Caller action required.
+- Action explicitly agreed by both parties.
+- Proposed but conditional future action.
+- Scheduled meeting: only if an actual date and time were agreed.
+- Purchase commitment: only if explicit purchase evidence exists.
+- Final call outcome.
+
+Never turn a request for information into a scheduled meeting.
+Never turn a conditional demo into an agreed meeting.
+Never turn a polite response into buying intent.
+
+EVIDENCE RULES:
+
+- Use exact prospect quotes whenever possible.
+- Label caller observations separately.
+- If something is unknown, write "Not established."
+- Do not invent dates, budgets, approval processes or decision-makers.
+- Distinguish a price objection from a general budget concern.
+- Distinguish vendor evaluation from rejection.
+- Distinguish requested, proposed and agreed actions.
+
+OUTPUT USING THESE EXACT HEADINGS:
+
+1. Conversation progress
+   Selected stage:
+   Progress assessment:
+   Other detected signals:
+
+2. Sales qualification
+   Business need:
+   Existing solution:
+   Budget:
+   Decision-making authority:
+   Buying interest:
+   Overall qualification:
+
+3. Actual call outcome
+   Prospect request:
+   Caller action:
+   Agreed action:
+   Conditional next step:
+   Scheduled meeting:
+   Purchase commitment:
+   Final outcome:
+
+4. Evidence and unknowns
+
+5. Recommended next move
+
+6. Confidence
+   Conversation progress:
+   Sales qualification:
+   Call outcome:
+
+Confidence levels:
+HIGH = direct and unambiguous evidence.
+MEDIUM = supporting evidence, but important details are missing.
+LOW = ambiguous or insufficient evidence.
+
+Keep the analysis under 350 words.
+Be factual, concise and useful to a salesperson.
 """
 
     return {
         "result": await gemini(prompt)
     }
 
+
+# --------------------------------------------------
+# STRUCTURED CRM NOTES
+# --------------------------------------------------
 
 @app.post("/ai/structure-notes")
 async def structure_notes(body: AIRequest):
