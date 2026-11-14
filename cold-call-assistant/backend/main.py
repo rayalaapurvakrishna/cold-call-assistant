@@ -3,7 +3,7 @@ import os
 import uuid
 import asyncio
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Annotated, List, Optional
 
 import httpx
 from dotenv import load_dotenv
@@ -15,21 +15,21 @@ load_dotenv()
 
 app = FastAPI(
     title="CallGuide API",
-    version="2.1.0",
+    version="2.2.0",
     description="Evidence-led cold-call intelligence assistant"
 )
 
 origins = [
-    x.strip()
-    for x in os.getenv("CORS_ORIGINS", "*").split(",")
-    if x.strip()
+    item.strip()
+    for item in os.getenv("CORS_ORIGINS", "*").split(",")
+    if item.strip()
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=origins != ["*"],
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "apikey"],
 )
 
@@ -40,48 +40,46 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
 memory_calls = {}
 
+ShortText = Annotated[str, Field(max_length=500)]
+NoteText = Annotated[str, Field(max_length=4000)]
+ActionText = Annotated[str, Field(max_length=300)]
+ActionList = Annotated[List[ActionText], Field(max_length=20)]
+HistoryList = Annotated[List[Annotated[str, Field(max_length=1000)]], Field(max_length=30)]
 
-# --------------------------------------------------
-# DATA MODELS
-# --------------------------------------------------
 
 class StartCall(BaseModel):
-    prospect_name: str = ""
-    company_name: str = ""
-    role: str = ""
-    phone_note: str = ""
+    prospect_name: ShortText = ""
+    company_name: ShortText = ""
+    role: ShortText = ""
+    phone_note: NoteText = ""
 
 
 class StageSave(BaseModel):
     stage_number: int = Field(ge=1, le=8)
     stage_reached: int = Field(ge=1, le=8)
-    actions: List[str] = Field(default_factory=list)
-    prospect_words: str = ""
-    caller_note: str = ""
+    actions: ActionList = Field(default_factory=list)
+    prospect_words: NoteText = ""
+    caller_note: NoteText = ""
 
 
 class CloseCall(BaseModel):
     outcome: str = Field(min_length=1, max_length=80)
-    final_note: str = ""
-    prospect_words: str = ""
-    actions: List[str] = Field(default_factory=list)
-    caller_note: str = ""
+    final_note: NoteText = ""
+    prospect_words: NoteText = ""
+    actions: ActionList = Field(default_factory=list)
+    caller_note: NoteText = ""
     current_stage: int = Field(ge=1, le=8)
     stage_reached: int = Field(ge=1, le=8)
 
 
 class AIRequest(BaseModel):
     stage_number: int = Field(ge=1, le=8)
-    prospect_words: str = ""
-    caller_note: str = ""
-    company_name: str = ""
-    history: List[str] = Field(default_factory=list)
+    prospect_words: NoteText = ""
+    caller_note: NoteText = ""
+    company_name: ShortText = ""
+    history: HistoryList = Field(default_factory=list)
     call_id: Optional[str] = None
 
-
-# --------------------------------------------------
-# SALES STAGE FRAMEWORK
-# --------------------------------------------------
 
 STAGES = {
     1: "Opening: reach the correct person and establish who is calling.",
@@ -94,10 +92,6 @@ STAGES = {
     8: "Close: record the actual call outcome accurately and end respectfully."
 }
 
-
-# --------------------------------------------------
-# DATABASE HELPERS
-# --------------------------------------------------
 
 def using_supabase() -> bool:
     return bool(SUPABASE_URL and SUPABASE_KEY)
@@ -116,7 +110,7 @@ async def db_request(
     method: str,
     path: str,
     payload=None,
-    prefer="return=representation"
+    prefer: str = "return=representation"
 ):
     if not using_supabase():
         raise HTTPException(503, "Supabase is not configured.")
@@ -132,16 +126,25 @@ async def db_request(
 
         if response.is_error:
             print(
-                "Supabase error:",
+                "Supabase request failed:",
                 response.status_code,
-                response.text[:1000]
+                response.text[:500]
             )
             raise HTTPException(
                 502,
                 f"Database request failed ({response.status_code})."
             )
 
-        return response.json() if response.content else []
+        if not response.content:
+            return []
+
+        try:
+            return response.json()
+        except ValueError:
+            raise HTTPException(
+                502,
+                "The database returned an invalid response."
+            )
 
     except httpx.TimeoutException:
         raise HTTPException(504, "Database request timed out.")
@@ -150,7 +153,7 @@ async def db_request(
         raise HTTPException(502, "Could not connect to the database.")
 
 
-def validate_call_id(call_id: str):
+def validate_call_id(call_id: str) -> str:
     try:
         return str(uuid.UUID(call_id))
     except (ValueError, TypeError, AttributeError):
@@ -201,24 +204,16 @@ def build_conversation_context(stages, extra_history):
         words = (stage.get("prospect_words") or "").strip()
         note = (stage.get("caller_note") or "").strip()
 
-        section = [
-            f"STAGE {number}: {label}",
-        ]
+        section = [f"STAGE {number}: {label}"]
 
         if actions:
-            section.append(
-                "Recorded actions: " + ", ".join(actions)
-            )
+            section.append("Recorded actions: " + ", ".join(actions))
 
         if words:
-            section.append(
-                "Prospect's exact words: " + words
-            )
+            section.append("Prospect's exact words: " + words)
 
         if note:
-            section.append(
-                "Caller's observation: " + note
-            )
+            section.append("Caller's observation: " + note)
 
         sections.append("\n".join(section))
 
@@ -231,7 +226,6 @@ def build_conversation_context(stages, extra_history):
         )
 
     result = "\n\n".join(sections)
-
     return result[-18000:] if result else "No saved conversation."
 
 
@@ -248,10 +242,7 @@ async def get_ai_context(body: AIRequest):
 
         caller_context = (call.get("phone_note") or "").strip()
 
-    context = build_conversation_context(
-        stages,
-        body.history
-    )
+    context = build_conversation_context(stages, body.history)
 
     if caller_context:
         context += (
@@ -266,14 +257,10 @@ async def get_ai_context(body: AIRequest):
     current_section = []
 
     if current_words:
-        current_section.append(
-            "Current prospect wording: " + current_words
-        )
+        current_section.append("Current prospect wording: " + current_words)
 
     if current_note:
-        current_section.append(
-            "Current caller observation: " + current_note
-        )
+        current_section.append("Current caller observation: " + current_note)
 
     if current_section:
         context += "\n\nCURRENT UNSAVED INPUT:\n"
@@ -282,15 +269,11 @@ async def get_ai_context(body: AIRequest):
     return context, company
 
 
-# --------------------------------------------------
-# API STATUS
-# --------------------------------------------------
-
 @app.get("/")
 def root():
     return {
         "service": "CallGuide API",
-        "version": "2.1.0",
+        "version": "2.2.0",
         "status": "ok"
     }
 
@@ -304,10 +287,6 @@ def health():
         "model": GEMINI_MODEL if GEMINI_API_KEY else None,
     }
 
-
-# --------------------------------------------------
-# CALL MANAGEMENT
-# --------------------------------------------------
 
 @app.post("/calls")
 async def start_call(body: StartCall):
@@ -335,7 +314,6 @@ async def start_call(body: StartCall):
     })
 
     memory_calls[row["id"]] = row
-
     return {"call": row}
 
 
@@ -347,16 +325,12 @@ async def list_calls():
             "calls?select=*&order=created_at.desc&limit=100"
         )
     else:
-        data = [
-            call
-            for call in memory_calls.values()
-            if call.get("outcome") != "in_progress"
-        ]
-
+        data = list(memory_calls.values())
         data.sort(
             key=lambda call: call.get("created_at", ""),
             reverse=True
         )
+        data = data[:100]
 
     return {"calls": data}
 
@@ -394,10 +368,6 @@ async def get_call(call_id: str):
         "stages": call.get("stages", [])
     }
 
-
-# --------------------------------------------------
-# SAVE STAGE
-# --------------------------------------------------
 
 @app.post("/calls/{call_id}/stage")
 async def save_stage(call_id: str, body: StageSave):
@@ -463,10 +433,6 @@ async def save_stage(call_id: str, body: StageSave):
     }
 
 
-# --------------------------------------------------
-# CLOSE CALL
-# --------------------------------------------------
-
 @app.post("/calls/{call_id}/close")
 async def close_call(call_id: str, body: CloseCall):
     call_id = validate_call_id(call_id)
@@ -480,17 +446,6 @@ async def close_call(call_id: str, body: CloseCall):
         "prospect_words": body.prospect_words.strip(),
         "caller_note": body.caller_note.strip(),
         "created_at": now,
-    }
-
-    payload = {
-        "outcome": body.outcome,
-        "final_note": body.final_note.strip(),
-        "stage_reached": max(
-            body.stage_reached,
-            body.current_stage
-        ),
-        "last_prospect_words": body.prospect_words.strip(),
-        "closed_at": now,
     }
 
     if using_supabase():
@@ -539,17 +494,23 @@ async def close_call(call_id: str, body: CloseCall):
     else:
         call["stages"][prior] = final_stage
 
-    call.update(payload)
+    call.update({
+        "outcome": body.outcome,
+        "final_note": body.final_note.strip(),
+        "stage_reached": max(
+            call.get("stage_reached", 1),
+            body.stage_reached,
+            body.current_stage
+        ),
+        "last_prospect_words": body.prospect_words.strip(),
+        "closed_at": now,
+    })
 
     return {
         "saved": True,
         "call": call
     }
 
-
-# --------------------------------------------------
-# GEMINI AI
-# --------------------------------------------------
 
 SYSTEM_INSTRUCTION = """
 You are CallGuide, an evidence-led sales-call intelligence assistant.
@@ -652,7 +613,7 @@ async def gemini(prompt: str) -> str:
 
     url = (
         "https://generativelanguage.googleapis.com/v1beta/"
-        f"models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+        f"models/{GEMINI_MODEL}:generateContent"
     )
 
     payload = {
@@ -671,10 +632,19 @@ async def gemini(prompt: str) -> str:
         }
     }
 
+    headers = {
+        "x-goog-api-key": GEMINI_API_KEY,
+        "Content-Type": "application/json"
+    }
+
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             for attempt in range(3):
-                response = await client.post(url, json=payload)
+                response = await client.post(
+                    url,
+                    headers=headers,
+                    json=payload
+                )
 
                 if response.status_code in (429, 500, 502, 503, 504):
                     if attempt < 2:
@@ -683,30 +653,38 @@ async def gemini(prompt: str) -> str:
 
                 if response.is_error:
                     print(
-                        "Gemini error:",
+                        "Gemini request failed:",
                         response.status_code,
-                        response.text[:1000]
+                        response.text[:500]
                     )
-
                     raise HTTPException(
                         502,
                         f"Gemini API returned {response.status_code}. Check backend logs."
                     )
 
-                data = response.json()
+                try:
+                    data = response.json()
+                except ValueError:
+                    raise HTTPException(
+                        502,
+                        "Gemini returned an invalid response."
+                    )
+
                 candidates = data.get("candidates") or []
 
                 if not candidates:
-                    raise HTTPException(
-                        502,
-                        "Gemini returned no usable response. Try again."
+                    block_reason = (
+                        data.get("promptFeedback", {}).get("blockReason")
                     )
+                    message = (
+                        f"Gemini could not process this request ({block_reason})."
+                        if block_reason
+                        else "Gemini returned no usable response. Try again."
+                    )
+                    raise HTTPException(502, message)
 
-                parts = (
-                    candidates[0]
-                    .get("content", {})
-                    .get("parts", [])
-                )
+                candidate = candidates[0]
+                parts = candidate.get("content", {}).get("parts", [])
 
                 answer = "\n".join(
                     part.get("text", "")
@@ -715,9 +693,10 @@ async def gemini(prompt: str) -> str:
                 ).strip()
 
                 if not answer:
+                    finish_reason = candidate.get("finishReason", "unknown")
                     raise HTTPException(
                         502,
-                        "Gemini returned an empty response. Try again."
+                        f"Gemini returned no text response ({finish_reason})."
                     )
 
                 return answer
@@ -739,21 +718,6 @@ async def gemini(prompt: str) -> str:
         "Gemini is temporarily unavailable. Please try again."
     )
 
-
-# --------------------------------------------------
-# AI CONTEXT AND PROMPTS
-# --------------------------------------------------
-
-def json_stages():
-    return "\n".join(
-        f"{number}. {label}"
-        for number, label in STAGES.items()
-    )
-
-
-# --------------------------------------------------
-# AI STAGE COACH - UPGRADED
-# --------------------------------------------------
 
 @app.post("/ai/suggest-stage")
 async def suggest_stage(body: AIRequest):
@@ -891,14 +855,8 @@ Keep the analysis under 350 words.
 Be factual, concise and useful to a salesperson.
 """
 
-    return {
-        "result": await gemini(prompt)
-    }
+    return {"result": await gemini(prompt)}
 
-
-# --------------------------------------------------
-# STRUCTURED CRM NOTES
-# --------------------------------------------------
 
 @app.post("/ai/structure-notes")
 async def structure_notes(body: AIRequest):
@@ -944,6 +902,4 @@ OUTPUT THESE HEADINGS:
 Keep the result concise, factual and useful to a salesperson.
 """
 
-    return {
-        "result": await gemini(prompt)
-    }
+    return {"result": await gemini(prompt)}
