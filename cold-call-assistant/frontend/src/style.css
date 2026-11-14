@@ -839,3 +839,645 @@ footer {
     padding: 18px 16px;
   }
 }
+
+
+/* ==========================================
+   CALLGUIDE — BLACK / CRIMSON / WHITE THEME
+   ========================================== */
+
+:root {
+  color-scheme: dark;
+  --cg-black: #080808;
+  --cg-panel: #121212;
+  --cg-panel-light: #191919;
+  --cg-border: #303030;
+  --cg-red: #c8102e;
+  --cg-red-bright: #ef3340;
+  --cg-white: #ffffff;
+  --cg-muted: #a3a3a3;
+}
+
+/* GLOBAL */
+
+html,
+body {
+  background: var(--cg-black) !important;
+  color: var(--cg-white);
+}
+
+.app {
+  background:
+    radial-gradient(ellipse at 75% -15%, #42101b 0%, transparent 42%),
+    var(--cg-black) !important;
+  color: var(--cg-white);
+}
+
+::selection {
+  background: var(--cg-red);
+  color: white;
+}
+
+/* SIDEBAR */
+
+.sidebar {
+  background: #090909 !important;
+  border-right: 1px solid #292929 !important;
+}
+
+.sidebar .brand {
+  color: white !important;
+}
+
+.sidebar .brandmark {
+  background: linear-gradient(135deg, #a90925, #ef3340) !important;
+  box-shadow: 0 5px 22px #c8102e40 !important;
+}
+
+.sidebar .brand .blue {
+  color: var(--cg-red-bright) !important;
+}
+
+.sidebar-section-label {
+  color: #777 !important;
+}
+
+.sidebar-link {
+  color: #a3a3a3 !important;
+  border-radius: 9px !important;
+}
+
+.sidebar-link:hover {
+  background: #1b1b1b !important;
+  color: white !important;
+}
+
+.sidebar-link.active {
+  background: #321017 !important;
+  border-color: #70202d !important;
+  color: white !important;
+}
+
+.sidebar-link.active svg {
+  color: var(--cg-red-bright) !important;
+}
+
+.sidebar-footer {
+  border-color: #292929 !important;
+  color: #858585 !important;
+}
+
+.sidebar-footer svg {
+  color: var(--cg-red-bright) !important;
+}
+
+/* MAIN CONTENT */
+
+.app > main {
+  color: white;
+}
+
+.eyebrow {
+  color: #ef5361 !important;
+}
+
+.section-label,
+.progress-caption,
+.stage-meta {
+  color: #999 !important;
+}
+
+.welcome h1,
+.history h1,
+.research-page h1,
+.call-head h1 {
+  color: white !important;
+}
+
+.welcome h1 em {
+  background: linear-gradient(90deg, #c8102e, #ff5967) !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  color: transparent !important;
+}
+
+.intro {
+  color: #b0b0b0 !important;
+}
+
+/* DASHBOARD STAT CARDS */
+
+.stat-card {
+  background: linear-gradient(145deg, #1b1b1b, #101010) !important;
+  border: 1px solid #303030 !important;
+  border-radius: 13px !important;
+  box-shadow: 0 10px 30px #00000035 !important;
+  transition: .25s ease !important;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: #8f2636 !important;
+  box-shadow: 0 12px 30px #c8102e15 !important;
+}
+
+.stat-card > span {
+  color: #a3a3a3 !important;
+}
+
+.stat-card strong {
+  color: white !important;
+}
+
+.stat-card small {
+  color: #a0a0a0 !important;
+}
+
+.stat-card small svg {
+  color: var(--cg-red-bright) !important;
+}
+
+/* RESEARCH STRIP */
+
+.research-strip,
+.research-stats {
+  background: linear-gradient(110deg, #270b11, #171717) !important;
+  border: 1px solid #51202a !important;
+  border-radius: 12px !important;
+  color: white !important;
+}
+
+.research-strip b,
+.research-stats b {
+  color: white !important;
+}
+
+.research-strip span,
+.research-stats span {
+  color: #c2b5b7 !important;
+}
+
+.research-strip button {
+  color: #ff6673 !important;
+}
+
+/* CARDS AND PANELS */
+
+.start-card,
+.stage-preview,
+.stagecard,
+.sidecard,
+.progress,
+.historylist,
+.research-card {
+  background: var(--cg-panel) !important;
+  border: 1px solid var(--cg-border) !important;
+  border-radius: 13px !important;
+  box-shadow: 0 12px 35px #00000035 !important;
+}
+
+.start-card h2,
+.stage-title h2,
+.sidecard h3,
+.research-card h2 {
+  color: white !important;
+}
+
+.stage-title p,
+.sidecard > p,
+.research-card > p {
+  color: #b0b0b0 !important;
+}
+
+/* INPUTS */
+
+.formgrid label,
+.textarea-label {
+  color: #d0d0d0 !important;
+}
+
+.formgrid input,
+textarea {
+  background: #090909 !important;
+  color: white !important;
+  border: 1px solid #383838 !important;
+  border-radius: 7px !important;
+}
+
+.formgrid input::placeholder,
+textarea::placeholder {
+  color: #737373 !important;
+}
+
+.formgrid input:focus,
+textarea:focus {
+  border-color: var(--cg-red) !important;
+  box-shadow: 0 0 0 3px #c8102e22 !important;
+}
+
+.textarea-label span {
+  color: #999 !important;
+}
+
+/* PRIMARY BUTTONS */
+
+.primary {
+  background: linear-gradient(135deg, #a90d27, #e3223b) !important;
+  color: white !important;
+  border: 1px solid #e22b43 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 5px 18px #c8102e30 !important;
+  transition: .2s ease !important;
+}
+
+.primary:hover {
+  background: linear-gradient(135deg, #c8102e, #fa4355) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px #c8102e45 !important;
+}
+
+.primary:disabled {
+  opacity: .55;
+}
+
+/* SECONDARY BUTTONS */
+
+.ghost {
+  background: #191919 !important;
+  border: 1px solid #383838 !important;
+  color: #eeeeee !important;
+  border-radius: 8px !important;
+}
+
+.ghost:hover {
+  background: #292929 !important;
+  border-color: #8e2736 !important;
+}
+
+/* CALL STAGES */
+
+.progressline {
+  background: #303030 !important;
+}
+
+.progressline span {
+  background: linear-gradient(90deg, #a90925, #ff5262) !important;
+}
+
+.stepstrip button span {
+  background: #171717 !important;
+  border-color: #454545 !important;
+  color: #bdbdbd !important;
+}
+
+.stepstrip button.chosen span {
+  background: var(--cg-red) !important;
+  border-color: var(--cg-red) !important;
+  color: white !important;
+}
+
+.stepstrip button.done span,
+.side-stages button.passed span {
+  background: #6f1525 !important;
+  border-color: #9d2336 !important;
+  color: white !important;
+}
+
+.number {
+  background: linear-gradient(135deg, #a90925, #ed3448) !important;
+  color: white !important;
+  border-radius: 9px !important;
+}
+
+.saylist div {
+  background: #191919 !important;
+  border: 1px solid #303030 !important;
+  color: #e2e2e2 !important;
+  border-radius: 7px !important;
+}
+
+.saylist svg {
+  color: #ef5361 !important;
+}
+
+.action {
+  background: #151515 !important;
+  border: 1px solid #383838 !important;
+  color: #dddddd !important;
+  border-radius: 7px !important;
+}
+
+.action:hover {
+  border-color: var(--cg-red) !important;
+}
+
+.action.selected,
+.outcomes button.selected {
+  background: #3b111a !important;
+  border-color: #c8102e !important;
+  color: white !important;
+}
+
+/* AI ASSISTANT */
+
+.ai-button {
+  background: #291016 !important;
+  border: 1px solid #71303b !important;
+  color: #ff7b88 !important;
+  border-radius: 7px !important;
+}
+
+.ai-button:hover {
+  background: #43131e !important;
+}
+
+.airesult {
+  background: #1b1113 !important;
+  border: 1px solid #51232c !important;
+  border-left: 3px solid var(--cg-red) !important;
+  border-radius: 8px !important;
+  color: #e4d9db !important;
+}
+
+.airesult b {
+  color: #ff7886 !important;
+}
+
+.stage-coach {
+  background: #211216 !important;
+  border-color: var(--cg-red) !important;
+  color: #e5d5d7 !important;
+  border-radius: 7px !important;
+}
+
+.stage-coach b,
+.tip b {
+  color: #ff6474 !important;
+}
+
+/* RIGHT SIDE STAGE NAVIGATION */
+
+.side-stages button {
+  background: transparent !important;
+  color: #b0b0b0 !important;
+  border-radius: 7px !important;
+}
+
+.side-stages button:hover {
+  background: #222 !important;
+  color: white !important;
+}
+
+.side-stages button.current {
+  background: #35131b !important;
+  color: white !important;
+}
+
+.side-stages button.current span {
+  background: var(--cg-red) !important;
+  border-color: var(--cg-red) !important;
+  color: white !important;
+}
+
+.side-stages button span {
+  border-color: #444 !important;
+}
+
+.side-stages button i {
+  color: #ff6978 !important;
+}
+
+.tip {
+  background: #1b1113 !important;
+  border-color: var(--cg-red) !important;
+  border-radius: 7px !important;
+}
+
+.tip p {
+  color: #c2b4b6 !important;
+}
+
+/* CALL HISTORY */
+
+.history-toolbar {
+  color: #aaa !important;
+}
+
+.historyrow {
+  background: #121212 !important;
+  color: white !important;
+  border-color: #303030 !important;
+}
+
+.historyrow:hover {
+  background: #211316 !important;
+}
+
+.hist-icon {
+  background: #35131b !important;
+  color: #ff6878 !important;
+  border-radius: 8px !important;
+}
+
+.hist-main b,
+.hist-stage b {
+  color: white !important;
+}
+
+.hist-main span,
+.hist-stage small {
+  color: #999 !important;
+}
+
+.outcome {
+  background: #292929 !important;
+  color: #eee !important;
+  border-radius: 5px !important;
+}
+
+.empty {
+  background: #121212 !important;
+  border-color: #303030 !important;
+  color: #aaa !important;
+}
+
+.empty h3 {
+  color: white !important;
+}
+
+/* RESEARCH PAGE */
+
+.research-card > p,
+.decision-list p {
+  color: #aaa !important;
+}
+
+.barrow > div {
+  color: #ddd !important;
+}
+
+.barrow b {
+  color: #ff6978 !important;
+}
+
+.barrow i {
+  background: #333 !important;
+}
+
+.barrow i span {
+  background: linear-gradient(90deg, #a90925, #ff5969) !important;
+}
+
+.decision-list > div {
+  border-color: #303030 !important;
+}
+
+.decision-list > div > span {
+  color: #ff6978 !important;
+}
+
+.decision-list section b {
+  color: white !important;
+}
+
+.research-footnote {
+  background: #211216 !important;
+  border-color: var(--cg-red) !important;
+  color: #ddd !important;
+}
+
+.research-footnote b {
+  color: #ff7886 !important;
+}
+
+.research-footnote svg {
+  color: #ff5969 !important;
+}
+
+/* MODALS */
+
+.modalback {
+  background: #000000df !important;
+  backdrop-filter: blur(9px);
+}
+
+.modal {
+  background: #141414 !important;
+  border: 1px solid #383838 !important;
+  border-radius: 14px !important;
+  color: white !important;
+}
+
+.modal h2 {
+  color: white !important;
+}
+
+.modal > p {
+  color: #aaa !important;
+}
+
+.modalx {
+  color: #ccc !important;
+}
+
+.outcomes button {
+  background: #1b1b1b !important;
+  border: 1px solid #393939 !important;
+  color: #ddd !important;
+  border-radius: 7px !important;
+}
+
+.outcomes button:hover {
+  border-color: var(--cg-red) !important;
+}
+
+.detail-timeline > div {
+  border-color: #303030 !important;
+}
+
+.detail-timeline > div > span {
+  background: #39141d !important;
+  color: #ff7886 !important;
+}
+
+.detail-timeline section b {
+  color: white !important;
+}
+
+.detail-timeline small,
+.detail-timeline section p {
+  color: #aaa !important;
+}
+
+.detail-timeline blockquote {
+  background: #1d1718 !important;
+  border-color: var(--cg-red) !important;
+  color: #ddd !important;
+}
+
+/* STATUS */
+
+.live-pill {
+  color: #ccc !important;
+}
+
+.live-pill.online i {
+  background: #37d99a !important;
+}
+
+.live-pill.offline i {
+  background: #ff5364 !important;
+}
+
+.dotlive {
+  background: #ff5364 !important;
+}
+
+/* FOOTER AND NOTIFICATIONS */
+
+footer {
+  background: transparent !important;
+  border-color: #292929 !important;
+  color: #888 !important;
+}
+
+footer b {
+  color: var(--cg-red-bright) !important;
+}
+
+.toast {
+  background: #211316 !important;
+  border: 1px solid #71303b !important;
+  color: white !important;
+  border-radius: 8px !important;
+  z-index: 30;
+}
+
+/* POLISHED INTERACTIONS */
+
+button {
+  transition: background .2s ease, border-color .2s ease,
+    color .2s ease, transform .2s ease;
+}
+
+button:focus-visible {
+  outline: 2px solid #ef3340;
+  outline-offset: 3px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 650px) {
+  .sidebar {
+    background: #090909 !important;
+    border-bottom: 1px solid #292929 !important;
+  }
+
+  .sidebar-link {
+    color: #bbb !important;
+  }
+
+  .sidebar-link.active {
+    background: #35131b !important;
+    color: white !important;
+  }
+}
