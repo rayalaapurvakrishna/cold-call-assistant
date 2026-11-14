@@ -250,14 +250,16 @@ def build_conversation_context(stages, extra_history):
     return result[-18000:] if result else "No saved conversation."
 
 
+
 async def get_ai_context(body: AIRequest):
     """
-    Combine saved stages with current unsaved input.
+    Combine saved stages, caller setup context and current unsaved input.
     Older frontend requests without call_id still work.
     """
 
     stages = []
     company = body.company_name
+    caller_context = ""
 
     if body.call_id:
         stages, call = await load_call_stages(body.call_id)
@@ -265,10 +267,19 @@ async def get_ai_context(body: AIRequest):
         if not company:
             company = call.get("company_name", "")
 
+        caller_context = (call.get("phone_note") or "").strip()
+
     context = build_conversation_context(
         stages,
         body.history
     )
+
+    if caller_context:
+        context += (
+            "\n\nCALLER-PROVIDED SETUP CONTEXT "
+            "(not prospect statements):\n"
+            + caller_context
+        )
 
     current_words = body.prospect_words.strip()
     current_note = body.caller_note.strip()
@@ -290,6 +301,7 @@ async def get_ai_context(body: AIRequest):
         context += "\n".join(current_section)
 
     return context, company
+
 
 
 # --------------------------------------------------
