@@ -348,56 +348,74 @@ function App() {
 
   return (
     <div className="app">
-      <header className="topbar">
+
+      {/* PREMIUM SIDEBAR */}
+      <aside className="sidebar">
         <div className="brand">
-          <div className="brandmark"><Phone size={18} /></div>
-          <span>Call<span className="blue">Guide</span></span>
-          <small>MERIDIAN GROWTH PARTNERS</small>
+          <div className="brandmark">
+            <Phone size={18} />
+          </div>
+
+          <span>
+            Call<span className="blue">Guide</span>
+          </span>
         </div>
 
-        <nav>
+        <div className="sidebar-section-label">WORKSPACE</div>
+
+        <nav className="sidebar-nav">
           <button
-            className={page === 'call' ? 'nav active' : 'nav'}
+            className={page === 'call' ? 'sidebar-link active' : 'sidebar-link'}
             onClick={() => setPage('call')}
           >
-            <Phone size={16} /> Live call
+            <Phone size={17} />
+            <span>{call ? 'Live call' : 'Dashboard'}</span>
           </button>
 
           <button
-            className={page === 'history' ? 'nav active' : 'nav'}
+            className={page === 'history' ? 'sidebar-link active' : 'sidebar-link'}
             onClick={() => {
               setPage('history');
               loadHistory();
             }}
           >
-            <History size={16} /> Past calls
+            <History size={17} />
+            <span>Call history</span>
           </button>
 
           <button
-            className={page === 'research' ? 'nav active' : 'nav'}
+            className={page === 'research' ? 'sidebar-link active' : 'sidebar-link'}
             onClick={() => setPage('research')}
           >
-            <BarChart3 size={16} /> Research
+            <BarChart3 size={17} />
+            <span>Research</span>
           </button>
         </nav>
 
-        <div
-          className={`live-pill ${
-            serviceHealth?.status === 'ok'
-              ? 'online'
+        <div className="sidebar-bottom">
+          <div
+            className={`live-pill ${
+              serviceHealth?.status === 'ok'
+                ? 'online'
+                : serviceHealth?.status === 'offline'
+                  ? 'offline'
+                  : ''
+            }`}
+          >
+            <i />
+            {serviceHealth?.status === 'ok'
+              ? 'API ONLINE'
               : serviceHealth?.status === 'offline'
-                ? 'offline'
-                : ''
-          }`}
-        >
-          <i />
-          {serviceHealth?.status === 'ok'
-            ? 'API ONLINE'
-            : serviceHealth?.status === 'offline'
-              ? 'API OFFLINE'
-              : 'CONNECTING'}
+                ? 'API OFFLINE'
+                : 'CONNECTING'}
+          </div>
+
+          <div className="sidebar-footer">
+            <ShieldCheck size={16} />
+            <span>AI assists. You decide.</span>
+          </div>
         </div>
-      </header>
+      </aside>
 
       <main>
         {page === 'call' && !call && (
@@ -414,7 +432,6 @@ function App() {
               structure in view and the prospect’s words at the centre.
             </p>
 
-            {/* Live dashboard statistics */}
             <div className="dashboard-stats">
               <div className="stat-card">
                 <span>TOTAL CALLS</span>
