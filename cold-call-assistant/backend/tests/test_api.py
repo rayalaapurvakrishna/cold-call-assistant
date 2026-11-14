@@ -121,3 +121,37 @@ def test_closing_while_viewing_earlier_stage_preserves_furthest_stage():
     assert detail['call']['stage_reached'] == 6
     assert detail['stages'][0]['stage_number'] == 2
     assert detail['stages'][0]['prospect_words'] == 'Please call me Friday.'
+
+
+def test_start_call_rejects_oversized_company_name():
+    response = client.post("/calls", json={
+        "company_name": "A" * 501
+    })
+    assert response.status_code == 422
+
+
+def test_memory_history_includes_active_calls():
+    response = client.post("/calls", json={
+        "prospect_name": "Test Prospect"
+    })
+    assert response.status_code == 200
+
+    history = client.get("/calls")
+    assert history.status_code == 200
+    assert any(
+        call["id"] == response.json()["call"]["id"]
+        for call in history.json()["calls"]
+    )
+
+
+def test_stage_save_rejects_more_than_twenty_actions():
+    call_id = client.post("/calls", json={}).json()["call"]["id"]
+
+    response = client.post(f"/calls/{call_id}/stage", json={
+        "stage_number": 1,
+        "stage_reached": 1,
+        "actions": ["Action"] * 21
+    })
+
+    assert response.status_code == 422
+
