@@ -64,7 +64,6 @@ function App() {
   const draft = drafts[stage] || emptyDraft;
   const pct = Math.round((furthestStage / 8) * 100);
 
-  // Dashboard statistics
   const totalCalls = history.length;
 
   const positiveCalls = history.filter((item) =>
@@ -146,6 +145,8 @@ function App() {
   }
 
   async function startCall() {
+    if (loading) return;
+
     setLoading(true);
 
     try {
@@ -171,7 +172,7 @@ function App() {
   }
 
   async function saveStage(nextStage = null) {
-    if (!call) return;
+    if (!call || loading) return;
 
     setLoading(true);
 
@@ -205,20 +206,42 @@ function App() {
   }
 
   async function endCall() {
-    if (!call || !outcome) return;
+    if (!call || !outcome || loading) return;
 
     setLoading(true);
 
     try {
-      const currentStageHasEvidence =
-        draft.actions.length > 0 ||
-        Boolean(draft.words.trim()) ||
-        Boolean(draft.note.trim());
+      const stagesWithEvidence = Object.entries(drafts)
+        .map(([number, savedDraft]) => ({
+          number: Number(number),
+          draft: savedDraft,
+        }))
+        .filter(({ draft: savedDraft }) =>
+          savedDraft.actions.length > 0 ||
+          Boolean(savedDraft.words.trim()) ||
+          Boolean(savedDraft.note.trim())
+        );
 
       const finalStageReached = Math.max(
         furthestStage,
-        currentStageHasEvidence ? stage : 1
+        stage,
+        ...stagesWithEvidence.map(({ number }) => number)
       );
+
+      for (const { number, draft: savedDraft } of stagesWithEvidence) {
+        if (number === stage) continue;
+
+        await request(`/calls/${call.id}/stage`, {
+          method: 'POST',
+          body: JSON.stringify({
+            stage_number: number,
+            stage_reached: finalStageReached,
+            actions: savedDraft.actions,
+            prospect_words: savedDraft.words,
+            caller_note: savedDraft.note,
+          }),
+        });
+      }
 
       await request(`/calls/${call.id}/close`, {
         method: 'POST',
@@ -244,7 +267,7 @@ function App() {
 
       await loadHistory();
 
-      notify('Call and final stage saved');
+      notify('Call and all recorded stages saved');
     } catch (error) {
       notify(error.message || 'Could not close call. Your notes are still on screen.');
     } finally {
@@ -253,7 +276,7 @@ function App() {
   }
 
   async function askAI(kind) {
-    if (!call) return;
+    if (!call || loading) return;
 
     setLoading(true);
     setAi('');
@@ -296,7 +319,7 @@ function App() {
   }
 
   async function analyzeSavedCall(kind) {
-    if (!detail?.call?.id) return;
+    if (!detail?.call?.id || detailAiLoading) return;
 
     setDetailAiLoading(true);
 
@@ -355,7 +378,6 @@ function App() {
 
   return (
     <div className="app">
-      {/* PREMIUM SIDEBAR */}
       <aside className="sidebar">
         <div className="brand">
           <div className="brandmark">
@@ -420,7 +442,6 @@ function App() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main>
         {page === 'call' && !call && (
           <section className="welcome">
@@ -493,6 +514,7 @@ function App() {
                 <label>
                   Prospect name
                   <input
+                    maxLength={500}
                     value={form.prospect_name}
                     onChange={(e) => setForm({ ...form, prospect_name: e.target.value })}
                     placeholder="e.g. Anjali Menon"
@@ -502,6 +524,7 @@ function App() {
                 <label>
                   Company
                   <input
+                    maxLength={500}
                     value={form.company_name}
                     onChange={(e) => setForm({ ...form, company_name: e.target.value })}
                     placeholder="Company name"
@@ -511,6 +534,7 @@ function App() {
                 <label>
                   Role / title
                   <input
+                    maxLength={500}
                     value={form.role}
                     onChange={(e) => setForm({ ...form, role: e.target.value })}
                     placeholder="e.g. Founder, Director"
@@ -520,6 +544,7 @@ function App() {
                 <label>
                   Caller context
                   <input
+                    maxLength={4000}
                     value={form.phone_note}
                     onChange={(e) => setForm({ ...form, phone_note: e.target.value })}
                     placeholder="Optional context"
@@ -668,6 +693,7 @@ function App() {
                   PROSPECT’S WORDS
                   <span>Capture what they actually said, not your interpretation.</span>
                   <textarea
+                    maxLength={4000}
                     value={draft.words}
                     onChange={(e) => updateDraft('words', e.target.value)}
                     placeholder="Type the prospect’s exact words…"
@@ -678,6 +704,7 @@ function App() {
                   CALLER NOTE
                   <span>Optional context for the next call.</span>
                   <textarea
+                    maxLength={4000}
                     className="smallarea"
                     value={draft.note}
                     onChange={(e) => updateDraft('note', e.target.value)}
